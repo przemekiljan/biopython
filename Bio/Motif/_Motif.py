@@ -19,6 +19,8 @@ import math,random
 class Motif(object):
     """
     A class representing sequence motifs.
+
+    Currently implemented using instances or a PWM.
     """
     def __init__(self,alphabet=IUPAC.unambiguous_dna):
         self.instances = []
