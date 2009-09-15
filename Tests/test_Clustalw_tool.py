@@ -1,4 +1,4 @@
-# Copyright 2008 by Peter Cock.  All rights reserved.
+# Copyright 2008-2009 by Peter Cock.  All rights reserved.
 # This code is part of the Biopython distribution and governed by its
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
@@ -7,17 +7,14 @@
 #and *.aln where we have not requested an explicit name?
 from Bio import MissingExternalDependencyError
 
-#TODO - Remove this work around once we drop python 2.3 support
-try:
-    set = set
-except NameError:
-    from sets import Set as set
-
 import sys
 import os
-from Bio import Clustalw
-from Bio.Clustalw import MultipleAlignCL
+from Bio import Clustalw #old!
+from Bio.Clustalw import MultipleAlignCL #old!
 from Bio import SeqIO
+from Bio import AlignIO
+from Bio.Align.Applications import ClustalwCommandline #new!
+from Bio.Application import generic_run
 
 #################################################################
 
@@ -86,7 +83,7 @@ try :
     assert False, "Should have failed, returned %s" % repr(align)
 except IOError, err :
     print "Failed (good)"
-    #Python 2.3 on Windows gives (0, 'Error')
+    #Python 2.3 on Windows gave (0, 'Error')
     #Python 2.5 on Windows gives [Errno 0] Error
     assert "Cannot open sequence file" in str(err) \
            or "not produced" in str(err) \
@@ -126,7 +123,7 @@ except IOError, err :
     #error for "invalid format", rather than just notice there
     #is not output file.
     #Note:
-    #Python 2.3 on Windows gives (0, 'Error')
+    #Python 2.3 on Windows gave (0, 'Error')
     #Python 2.5 on Windows gives [Errno 0] Error
     assert "invalid format" in str(err) \
            or "not produced" in str(err) \
@@ -183,14 +180,6 @@ for input_file, output_file, newtree_file in [
     if newtree_file is not None :
         cline.set_new_guide_tree(newtree_file)
 
-    if sys.platform=="win32" and sys.version_info[:2] < (2,4 ):
-        if " " in input_file or " " in output_file \
-        or (newtree_file is not None and " " in newtree_file) :
-            #This will fail on Python 2.3 ... cheat so the
-            #print-and-compare output matches!
-            print "Got an alignment, %i sequences" % (len(input_records))
-            continue
-
     #Run the command...
     align = Clustalw.do_alignment(cline)
 
@@ -204,6 +193,47 @@ for input_file, output_file, newtree_file in [
         assert str(record.seq) == str(output_records[record.id].seq)
         assert str(record.seq).replace("-","") == \
                str(input_records[record.id].seq)
+
+    #Clean up...
+    os.remove(output_file)
+
+    #Check the DND file was created.
+    #TODO - Try and parse this with Bio.Nexus?
+    if newtree_file is not None :
+        tree_file = newtree_file
+    else :
+        #Clustalw will name it based on the input file
+        tree_file = os.path.splitext(input_file)[0] + ".dnd"
+    assert os.path.isfile(tree_file), \
+           "Did not find tree file %s" % tree_file
+    os.remove(tree_file)
+
+
+    #And again, but this time using Bio.Align.Applications wrapper
+    #Any filesnames with spaces should get escaped with quotes automatically.
+    #Using keyword arguments here.
+    cline = ClustalwCommandline(clustalw_exe,
+                                infile=input_file,
+                                outfile=output_file)
+    assert str(eval(repr(cline)))==str(cline)
+    if newtree_file is not None :
+        #Test using a property:
+        cline.newtree = newtree_file
+        #I don't just want the tree, also want the alignment:
+        cline.align = True
+        assert str(eval(repr(cline)))==str(cline)
+    #print cline
+    return_code, out_handle, err_handle = generic_run(cline)
+    assert out_handle.read().strip().startswith("CLUSTAL")
+    assert err_handle.read().strip() == ""
+    align = AlignIO.read(open(output_file), "clustal")
+    assert set(input_records.keys()) == set(output_records.keys())
+    for record in align :
+        assert str(record.seq) == str(output_records[record.id].seq)
+        assert str(record.seq).replace("-","") == \
+               str(input_records[record.id].seq)
+
+    #Clean up...
     os.remove(output_file)
 
     #Check the DND file was created.

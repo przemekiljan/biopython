@@ -2,19 +2,44 @@ This file provides documentation for modules in Biopython that have been moved
 or deprecated in favor of other modules. This provides some quick and easy
 to find documentation about how to update your code to work again.
 
+Python 2.3
+==========
+No longer supported as of Release 1.51, having triggered a warning with
+Release 1.50, with a mention in the release notes for Release 1.49.
+
+Bio.Clustalw
+============
+Declared obsolete in Release 1.52, having been replaced with Bio.AlignIO for
+parsing and writing clustal format alignments (since Release 1.46), and
+Bio.Align.Applications for calling the ClustalW command line tool (Release
+1.51). See the Tutorial for examples.
+
+BioSQL and psycopg
+==================
+Support for psycopg (version one) in Biopython's BioSQL code was deprecated
+in Release 1.51, please use psycopg2 instead.
+
+Bio.Application.generic_run and ApplicationResult
+=================================================
+Declared obsolete in Release 1.51, please use Python subprocess module instead.
+
 Bio.Entrez.efetch and rettype="genbank"
 =======================================
 As of Easter 2009, the NCBI have stopped supporting the unofficial return type
 of "genbank" in EFetch.  Instead we should be using "gb" (GenBank) or "gp"
-(GenPept).  Bio.Entrez.efetch will correct this automatically, but issues a
-deprecation warning.
+(GenPept).  As of Biopython 1.50, Bio.Entrez.efetch will correct this
+automatically, but issues a deprecation warning.
+
+Bio.Entrez.query function
+=========================
+Deprecated in Release 1.47, removed in 1.52.
 
 Bio.SwissProt.SProt
 ===================
-Declared obsolete in Release 1.50, and is likely to be deprecated in a future
-release. Most of the functionality in Bio.SwissProt.SProt is available from
-Bio.SwissProt. Note that Bio.SeqIO currently still uses Bio.SwissProt.SProt;
-this will have to be rectified in a future release.
+Declared obsolete in Release 1.50, and deprecated for Release 1.51. Most of the
+functionality in Bio.SwissProt.SProt is available from Bio.SwissProt. Bio.SeqIO
+currently uses Bio.SwissProt instead of Bio.SwissProt.SProt to parse SwissProt
+files.
 
 Bio.Prosite and Bio.Enzyme
 ==========================
@@ -24,7 +49,7 @@ Bio.ExPASy.Enzyme, respectively.
 
 Bio.EZRetrieve, Bio.NetCatch, Bio.File.SGMLHandle, Bio.FilteredReader
 =====================================================================
-Declared obsolete in Release 1.50, will be deprecated in a subsequent release.
+Declared obsolete in Release 1.50, deprecated in Release 1.52.
 
 Bio.Graphics.GenomeDiagram and colour/color, centre/center
 ==========================================================
@@ -37,8 +62,8 @@ remove support for colour and centre in later releases of Biopython.
 
 Bio.AlignAce and Bio.MEME
 =========================
-As of Biopython 1.50, these modules are considered to be obsolete with the
-introduction of Bio.Motif, and they will be deprecated in a future release.
+Declared obsolete in Release 1.50, and deprecated in Release 1.52. Please
+use Bio.Motif instead.
 
 Numeric support
 ===============
@@ -54,7 +79,7 @@ next release.
 
 Bio.Transcribe and Bio.Translate
 ================================
-Declared obsolete in Release 1.49.
+Declared obsolete in Release 1.49, deprecated in Release 1.51.
 Please use the methods or functions in Bio.Seq instead.
 
 Bio.mathfns, Bio.stringfns and Bio.listfns (and their C code variants)
@@ -75,7 +100,9 @@ Deprecated in Release 1.49, as the website this parsed has been redesigned.
 
 Martel
 ======
-Declared obsolete in Release 1.48, deprecated in Release 1.49.
+Declared obsolete in Release 1.48, deprecated in Release 1.49, and removed
+in Release 1.51.  The source code for Martel is still in our repository if
+anyone wanted to develop this outside of Biopython.
 
 Bio.Mindy and associated modules.
 =================================
@@ -83,15 +110,32 @@ Declared obsolete in Release 1.48, deprecated in Release 1.49, removed in
 Release 1.51.  This includes the Bio.Writer, Bio.writers, Bio.builders,
 Bio.Std, Bio.StdHandler, Bio.Decode and Bio.DBXRef modules
 
+Bio.Fasta index_file and Dictionary
+===================================
+Deprecated in Release 1.44, removed in Biopython 1.46. For small to medium
+sized files, use Bio.SeqIO.to_dict() to make an in memory dictionary of
+SeqRecord objects. Biopython 1.52 onwards provides Bio.SeqIO.indexed_dict()
+which is suitable even for very large files.
+
+Bio.Fasta (including Bio.Fasta.FastaAlign)
+==========================================
+Declared obsolete in Release 1.48, and deprecated in Release 1.51.
+Please use the "fasta" support in Bio.SeqIO or Bio.AlignIO instead.
+
+Bio.Align.FormatConvert
+=======================
+Declared obsolete in Release 1.48, and deprecated in Release 1.51.
+Please use Bio.AlignIO or the Alignment object's format method instead.
+
 Bio.Emboss.Primer
 =================
-Deprecated in Release 1.48, this parser was replaced by Bio.Emboss.Primer3
-and Bio.Emboss.PrimerSearch instead.
+Deprecated in Release 1.48, and removed in Release 1.51, this parser was
+replaced by Bio.Emboss.Primer3 and Bio.Emboss.PrimerSearch instead.
 
 Bio.MetaTool
 ============
-Deprecated in Release 1.48, this was a parser for the output of MetaTool 3.5
-which is now obsolete.
+Deprecated in Release 1.48, and removed in Release 1.51, this was a parser
+for the output of MetaTool 3.5 which is now obsolete.
 
 Bio.GenBank
 ===========
@@ -106,34 +150,38 @@ Please use Bio.Entrez instead.
 
 Bio.EUtils
 ==========
-Deprecated in favor of Bio.Entrez in Release 1.48.
+Deprecated in favor of Bio.Entrez in Release 1.48, removed in Release 1.52.
 
-Bio.Sequencing
-==============
-A revised API was added and the old one deprecated in Biopython 1.48:
+Bio.Sequencing & Bio.Medline
+============================
+A revised API was added and the old one deprecated in Release 1.48,
+and removed in Biopython 1.52:
 Bio.Sequencing.Ace.RecordParser --> Bio.Sequencing.Ace.read(handle)
 Bio.Sequencing.Ace.Iterator --> Bio.Sequencing.Ace.parse(handle)
 Bio.Sequencing.Phd.RecordParser --> Bio.Sequencing.Phd.read(handle)
 Bio.Sequencing.Phd.Iterator --> Bio.Sequencing.Phd.parse(handle)
-
+Bio.Medline.RecordParser --> Bio.Medline.read(handle)
+Bio.Medline.Iterator --> Bio.Medline.parse(handle)
 
 Bio.Blast.NCBIWWW
 =================
-The HTML BLAST parser was deprecated as of Release 1.48.
+The HTML BLAST parser was deprecated in Release 1.48, and removed in 1.52.
 The deprecated functions blast and blasturl were removed in Release 1.44.
 
 Bio.Saf
 =======
-Deprecated as of Release 1.48, as it appears to have no users, and relies
-on Martel which doesn't work properly with mxTextTools 3.0.
+Deprecated as of Release 1.48, removed in Release 1.51.  If useful, a parser
+for this "simple alignment format" could be developed for Bio.AlignIO instead.
 
 Bio.NBRF
 ========
-Deprecated as of Release 1.48 in favor of the "pir" format in Bio.SeqIO
+Deprecated as of Release 1.48 in favor of the "pir" format in Bio.SeqIO,
+removed in Release 1.51.
 
 Bio.IntelliGenetics
 ===================
-Deprecated as of Release 1.48 in favor of the "ig" format in Bio.SeqIO
+Deprecated as of Release 1.48 in favor of the "ig" format in Bio.SeqIO,
+removed in Release 1.51.
 
 Bio.SeqIO submodules PhylipIO, ClustalIO, NexusIO and StockholmIO
 =================================================================

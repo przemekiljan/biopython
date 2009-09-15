@@ -765,6 +765,17 @@ class _FeatureConsumer(_BaseGenBankConsumer):
         feature_end = cur_feature.sub_features[-1].location.end
         cur_feature.location = SeqFeature.FeatureLocation(feature_start,
                                                           feature_end)
+        # Historically a join on the reverse strand has been represented
+        # in Biopython with both the parent SeqFeature and its children
+        # (the exons for a CDS) all given a strand of -1.  Likewise, for
+        # a join feature on the forward strand they all have strand +1.
+        # However, we must also consider evil mixed strand examples like
+        # this, join(complement(69611..69724),139856..140087,140625..140650)
+        strands = set(sf.strand for sf in cur_feature.sub_features)
+        if len(strands)==1 :
+            cur_feature.strand = cur_feature.sub_features[0].strand
+        else :
+            cur_feature.strand = None # i.e. mixed strands
 
     def _set_location_info(self, parse_info, cur_feature):
         """Set the location information for a feature from the parse info.
@@ -827,11 +838,13 @@ class _FeatureConsumer(_BaseGenBankConsumer):
             #is just "3".  Similarly, "2^5" is just "3..4"
         # check if we just have a single base
         elif not(isinstance(range_info, LocationParser.Range)):
-            pos = self._get_position(range_info)
+            #A single base like "785" becomes [784:785] in python
+            s_pos = self._get_position(range_info)
             # move the single position back one to be consistent with how
             # python indexes numbers (starting at 0)
-            pos.position = pos.position  - 1
-            return SeqFeature.FeatureLocation(pos, pos)
+            s_pos.position = s_pos.position  - 1
+            e_pos = self._get_position(range_info)
+            return SeqFeature.FeatureLocation(s_pos, e_pos)
         # otherwise we need to get both sides of the range
         else:
             # get *Position objects for the start and end
@@ -841,7 +854,12 @@ class _FeatureConsumer(_BaseGenBankConsumer):
             start_pos.position, end_pos.position = \
               self._convert_to_python_numbers(start_pos.position,
                                               end_pos.position)
-
+            #If the start location is a one-of position, we also need to
+            #adjust their positions to use python counting.
+            if isinstance(start_pos, SeqFeature.OneOfPosition) :
+                for p in start_pos.position_choices :
+                    p.position -= 1
+                
             return SeqFeature.FeatureLocation(start_pos, end_pos)
 
     def _get_position(self, position):

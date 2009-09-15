@@ -2115,7 +2115,7 @@ kmeans(int nclusters, int nrows, int ncolumns, double** data, int** mask,
       { if (total < *error)
         { ifound = 1;
           *error = total;
-          for (i = 0; i < nelements; i++) clusterid[i] = tclusterid[i];
+          for (j = 0; j < nelements; j++) clusterid[j] = tclusterid[j];
         }
         break;
       }
@@ -2220,7 +2220,7 @@ kmedians(int nclusters, int nrows, int ncolumns, double** data, int** mask,
       { if (total < *error)
         { ifound = 1;
           *error = total;
-          for (i = 0; i < nelements; i++) clusterid[i] = tclusterid[i];
+          for (j = 0; j < nelements; j++) clusterid[j] = tclusterid[j];
         }
         break;
       }
@@ -2550,14 +2550,16 @@ to 0. If kmedoids fails due to a memory allocation error, ifound is set to -1.
     }
 
     for (i = 0; i < nelements; i++)
-    { if (total < *error)
-      { *ifound = 1;
-        *error = total;
-        /* Replace by the centroid in each cluster. */
-        for (j = 0; j < nelements; j++) clusterid[j] = centroids[tclusterid[j]];
+    { if (clusterid[i]!=centroids[tclusterid[i]])
+      { if (total < *error)
+        { *ifound = 1;
+          *error = total;
+          /* Replace by the centroid in each cluster. */
+          for (j = 0; j < nelements; j++)
+            clusterid[j] = centroids[tclusterid[j]];
+        }
         break;
       }
-      else if (clusterid[i]!=tclusterid[i]) break;
     }
     if (i==nelements) (*ifound)++; /* break statement not encountered */
   } while (++ipass < npass);

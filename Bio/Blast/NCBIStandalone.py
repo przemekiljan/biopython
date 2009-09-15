@@ -40,7 +40,7 @@ import re
 from Bio import File
 from Bio.ParserSupport import *
 from Bio.Blast import Record
-
+from Bio.Application import _escape_filename
 
 class LowQualityBlastError(Exception):
     """Error caused by running a low quality sequence through BLAST.
@@ -326,6 +326,14 @@ class _Scanner:
                               start='Sequences used in model')
         read_and_call_while(uhandle, consumer.noevent, blank=1)
 
+        # In BLAT, rather than a "No hits found" line, we just
+        # get no descriptions (and no alignments). This can be
+        # spotted because the next line is the database block:
+        if safe_peekline(uhandle).startswith("  Database:") :
+            consumer.end_descriptions()
+            # Stop processing.
+            return
+
         # Read the descriptions and the following blank lines, making
         # sure that there are descriptions.
         if not uhandle.peekline().startswith('Sequences not found'):
@@ -530,7 +538,8 @@ class _Scanner:
             # BLAT output ends abruptly here, without any of the other
             # information.  Check to see if this is the case.  If so,
             # then end the database report here gracefully.
-            if not uhandle.peekline():
+            if not uhandle.peekline().strip() \
+            or uhandle.peekline().startswith("BLAST"):
                 consumer.end_database_report()
                 return
             
@@ -626,9 +635,10 @@ class _Scanner:
 
 
         # Blast 2.2.4 can sometimes skip the whole parameter section.
+        # BLAT also skips the whole parameter section.
         # Thus, check to make sure that the parameter section really
         # exists.
-        if not uhandle.peekline():
+        if not uhandle.peekline().strip():
             return
 
         # BLASTN 2.2.9 looks like it reverses the "Number of Hits" and
@@ -722,13 +732,15 @@ class _Scanner:
         attempt_read_and_call(uhandle, consumer.window_size, start='Window for multiple hits')
         
         read_and_call(uhandle, consumer.dropoff_1st_pass, start='X1')
-        read_and_call(uhandle, consumer.gap_x_dropoff, start='X2')
+        # not TBLASTN
+        attempt_read_and_call(uhandle, consumer.gap_x_dropoff, start='X2')
 
         # not BLASTN, TBLASTX
         attempt_read_and_call(uhandle, consumer.gap_x_dropoff_final,
                               start='X3')
 
-        read_and_call(uhandle, consumer.gap_trigger, start='S1')
+        # not TBLASTN
+        attempt_read_and_call(uhandle, consumer.gap_trigger, start='S1')
         # not in blastx 2.2.1
         # first we make sure we have additional lines to work with, if
         # not then the file is done and we don't have a final S2
@@ -899,8 +911,9 @@ class _AlignmentConsumer:
         self._multiple_alignment = Record.MultipleAlignment()
 
     def title(self, line):
-        self._alignment.title = "%s%s" % (self._alignment.title,
-                                           line.lstrip())
+        if self._alignment.title:
+            self._alignment.title += " "
+        self._alignment.title += line.strip()
 
     def length(self, line):
         #e.g. "Length = 81" or more recently, "Length=428"
@@ -1658,17 +1671,16 @@ def blastall(blastcmd, program, database, infile, align_view='7', **keywds):
         'seqalign_file' : '-O',
         'outfile' : '-o',
         }
+    from Applications import BlastallCommandline
+    cline = BlastallCommandline(blastcmd)
+    cline.set_parameter(att2param['program'], program)
+    cline.set_parameter(att2param['database'], database)
+    cline.set_parameter(att2param['infile'], infile)
+    cline.set_parameter(att2param['align_view'], str(align_view))
+    for key, value in keywds.iteritems() :
+        cline.set_parameter(att2param[key], str(value))
+    return _invoke_blast(cline)
 
-    params = []
-    params.extend([att2param['program'], program])
-    params.extend([att2param['database'], database])
-    params.extend([att2param['infile'], _escape_filename(infile)])
-    params.extend([att2param['align_view'], str(align_view)])
-
-    for attr in keywds.keys():
-        params.extend([att2param[attr], str(keywds[attr])])
-
-    return _invoke_blast(blastcmd, params)
 
 def blastpgp(blastcmd, database, infile, align_view='7', **keywds):
     """Execute and retrieve data from standalone BLASTPGP as handles.
@@ -1786,16 +1798,15 @@ def blastpgp(blastcmd, database, infile, align_view='7', **keywds):
         'matrix_outfile' : '-Q',
         'align_infile' : '-B',
         }
+    from Applications import BlastpgpCommandline
+    cline = BlastpgpCommandline(blastcmd)
+    cline.set_parameter(att2param['database'], database)
+    cline.set_parameter(att2param['infile'], infile)
+    cline.set_parameter(att2param['align_view'], str(align_view))
+    for key, value in keywds.iteritems() :
+        cline.set_parameter(att2param[key], str(value))
+    return _invoke_blast(cline)
 
-    params = []
-    params.extend([att2param['database'], database])
-    params.extend([att2param['infile'], _escape_filename(infile)])
-    params.extend([att2param['align_view'], str(align_view)])
-
-    for attr in keywds.keys():
-        params.extend([att2param[attr], str(keywds[attr])])
-
-    return _invoke_blast(blastcmd, params)
 
 def rpsblast(blastcmd, database, infile, align_view="7", **keywds):
     """Execute and retrieve data from standalone RPS-BLAST as handles.
@@ -1886,17 +1897,16 @@ def rpsblast(blastcmd, database, infile, align_view="7", **keywds):
         'seqalign_file' : '-O',
         'align_outfile' : '-o',
         }
-        
-    params = []
 
-    params.extend([att2param['database'], database])
-    params.extend([att2param['infile'], _escape_filename(infile)])
-    params.extend([att2param['align_view'], str(align_view)])
+    from Applications import RpsBlastCommandline
+    cline = RpsBlastCommandline(blastcmd)
+    cline.set_parameter(att2param['database'], database)
+    cline.set_parameter(att2param['infile'], infile)
+    cline.set_parameter(att2param['align_view'], str(align_view))
+    for key, value in keywds.iteritems() :
+        cline.set_parameter(att2param[key], str(value))
+    return _invoke_blast(cline)
 
-    for attr in keywds.keys():
-        params.extend([att2param[attr], str(keywds[attr])])
-
-    return _invoke_blast(blastcmd, params)
 
 def _re_search(regex, line, error_msg):
     m = re.search(regex, line)
@@ -1956,62 +1966,28 @@ def _safe_float(str):
     # try again.
     return float(str)
 
-def _escape_filename(filename) :
-    """Escape filenames with spaces (PRIVATE)."""
-    if " " not in filename :
-        return filename
 
-    #See Bug 2480 - is adding the following helpful?
-    #if os.path.isfile(filename) :
-    #    #On Windows, if the file exists, we can ask for
-    #    #its alternative short name (DOS style 8.3 format)
-    #    #which has no spaces in it.
-    #    try :
-    #        import win32api
-    #        short = win32api.GetShortPathName(filename)
-    #        assert os.path.isfile(short)
-    #        return short
-    #    except ImportError :
-    #        pass
-
-    #We'll just quote it - works on Mac etc
-    if filename.startswith('"') and filename.endswith('"') :
-        #Its already quoted
-        return filename
-    else :
-        return '"%s"' % filename
-
-def _invoke_blast(blast_cmd, params) :
+def _invoke_blast(cline) :
     """Start BLAST and returns handles for stdout and stderr (PRIVATE).
 
-    Tries to deal with spaces in the BLAST executable path.
+    Expects a command line wrapper object from Bio.Blast.Applications
     """
+    import subprocess, sys
+    blast_cmd = cline.program_name
     if not os.path.exists(blast_cmd):
         raise ValueError("BLAST executable does not exist at %s" % blast_cmd)
+    #We don't need to supply any piped input, but we setup the
+    #standard input pipe anyway as a work around for a python
+    #bug if this is called from a Windows GUI program.  For
+    #details, see http://bugs.python.org/issue1124861
+    blast_process = subprocess.Popen(str(cline),
+                                     stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     shell=(sys.platform!="win32"))
+    blast_process.stdin.close()
+    return blast_process.stdout, blast_process.stderr
 
-    cmd_string = " ".join([_escape_filename(blast_cmd)] + params)
-
-    #Try and use subprocess (available in python 2.4+)
-    try :
-        import subprocess, sys
-        #We don't need to supply any piped input, but we setup the
-        #standard input pipe anyway as a work around for a python
-        #bug if this is called from a Windows GUI program.  For
-        #details, see http://bugs.python.org/issue1124861
-        blast_process = subprocess.Popen(cmd_string,
-                                         stdin=subprocess.PIPE,
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE,
-                                         shell=(sys.platform!="win32"))
-        blast_process.stdin.close()
-        return blast_process.stdout, blast_process.stderr
-    except ImportError :
-        #subprocess isn't available on python 2.3
-        #Note os.popen3 is deprecated in python 2.6
-        write_handle, result_handle, error_handle \
-                      = os.popen3(cmd_string)
-        write_handle.close()
-        return result_handle, error_handle
 
 def _security_check_parameters(param_dict) :
     """Look for any attempt to insert a command into a parameter.

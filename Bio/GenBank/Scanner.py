@@ -1,4 +1,4 @@
-# Copyright 2007 by Peter Cock.  All rights reserved.
+# Copyright 2007-2009 by Peter Cock.  All rights reserved.
 # This code is part of the Biopython distribution and governed by its
 # license.  Please see the LICENSE file that should have been included
 # as part of this package.
@@ -24,7 +24,7 @@
 # for more details of this format, and an example.
 # Added by Ying Huang & Iddo Friedberg
 
-import sys
+import warnings
 import os
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
@@ -400,7 +400,7 @@ class InsdcScanner :
         consumer = _FeatureConsumer(use_fuzziness = 1, 
                     feature_cleaner = FeatureValueCleaner())
 
-        if self.feed(handle, consumer) :
+        if self.feed(handle, consumer, do_features) :
             return consumer.data
         else :
             return None
@@ -417,7 +417,7 @@ class InsdcScanner :
         """
         #This is a generator function
         while True :
-            record = self.parse(handle)
+            record = self.parse(handle, do_features)
             if record is None : break
             assert record.id is not None
             assert record.name != "<unknown name>"
@@ -816,10 +816,11 @@ class GenBankScanner(InsdcScanner) :
                    'LOCUS line does not contain space at position 52:\n' + line
             assert line[55:62] == '       ', \
                    'LOCUS line does not contain spaces from position 56 to 62:\n' + line
-            assert line[64:65] == '-', \
-                   'LOCUS line does not contain - at position 65 in date:\n' + line
-            assert line[68:69] == '-', \
-                   'LOCUS line does not contain - at position 69 in date:\n' + line
+            if line[62:73].strip() :
+                assert line[64:65] == '-', \
+                       'LOCUS line does not contain - at position 65 in date:\n' + line
+                assert line[68:69] == '-', \
+                       'LOCUS line does not contain - at position 69 in date:\n' + line
 
             name_and_length_str = line[GENBANK_INDENT:29]
             while name_and_length_str.find('  ')!=-1 :
@@ -846,7 +847,8 @@ class GenBankScanner(InsdcScanner) :
                 consumer.residue_type(line[33:51].strip())
 
             consumer.data_file_division(line[52:55])
-            consumer.date(line[62:73])
+            if line[62:73].strip() :
+                consumer.date(line[62:73])
         elif line[40:44] in [' bp ', ' aa ',' rc '] :
             #New...
             #
@@ -883,10 +885,11 @@ class GenBankScanner(InsdcScanner) :
                    'LOCUS line does not contain space at position 64:\n' + line
             assert line[67:68] == ' ', \
                    'LOCUS line does not contain space at position 68:\n' + line
-            assert line[70:71] == '-', \
-                   'LOCUS line does not contain - at position 71 in date:\n' + line
-            assert line[74:75] == '-', \
-                   'LOCUS line does not contain - at position 75 in date:\n' + line
+            if line[68:79].strip() :
+                assert line[70:71] == '-', \
+                       'LOCUS line does not contain - at position 71 in date:\n' + line
+                assert line[74:75] == '-', \
+                       'LOCUS line does not contain - at position 75 in date:\n' + line
 
             name_and_length_str = line[GENBANK_INDENT:40]
             while name_and_length_str.find('  ')!=-1 :
@@ -912,7 +915,8 @@ class GenBankScanner(InsdcScanner) :
                 consumer.residue_type(line[44:63].strip())
 
             consumer.data_file_division(line[64:67])
-            consumer.date(line[68:79])
+            if line[68:79].strip() :
+                consumer.date(line[68:79])
         elif line[GENBANK_INDENT:].strip().count(" ")==0 : 
             #Truncated LOCUS line, as produced by some EMBOSS tools - see bug 1762
             #
@@ -934,13 +938,13 @@ class GenBankScanner(InsdcScanner) :
             else :
                 #Must just have just "LOCUS       ", is this even legitimate?
                 #We should be able to continue parsing... we need real world testcases!
-                print >> sys.stderr, "Warning: Minimal LOCUS line found - is this correct?\n" + line
+                warnings.warn("Minimal LOCUS line found - is this correct?\n" + line)
         elif len(line.split())>=4 and line.split()[3] in ["aa","bp"] :
             #Cope with EMBOSS seqret output where it seems the locus id can cause
             #the other fields to overflow.  We just IGNORE the other fields!
             consumer.locus(line.split()[1])
             consumer.size(line.split()[2])
-            print >> sys.stderr, "Warning: Malformed LOCUS line found - is this correct?\n" + line
+            warnings.warn("Malformed LOCUS line found - is this correct?\n" + line)
         else :
             raise ValueError('Did not recognise the LOCUS line layout:\n' + line)
 
