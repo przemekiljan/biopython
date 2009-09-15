@@ -33,6 +33,12 @@ class Motif(object):
         self.name=""
 
     def _check_length(self, len):
+        """Checks whether the length of current motif is equal len
+
+        throws a ValueError exception if the length is not equal
+
+        automatically invoked by Motif.add_instance()
+        """
         if self.length==None:
             self.length = len
         elif self.length != len:
