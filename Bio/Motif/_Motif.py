@@ -774,3 +774,13 @@ class Motif(object):
         import _pwm
         
         return _pwm.calculate(seq.tostring(),logodds)
+
+    def logodds_for_MOODS(self):
+        """Returns the log-odds  matrix which can be digested by the MOODS.search function.
+
+        Useful if you need very fast motif finding procedures from the MOODS package.
+        the MOODS package is available from:
+        http://www.cs.helsinki.fi/group/pssmfind/
+        """
+        import numpy
+        return numpy.array([map(lambda x: x[1],sorted(x.items())) for x in self.log_odds()]).transpose().tolist()
